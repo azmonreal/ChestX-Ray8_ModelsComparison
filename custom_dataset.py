@@ -63,11 +63,13 @@ def build_dataframes(phase_csvs, filters, limit):
     # Read CSV File
     dataframes = {}
 
+    if filters is None:
+        filters = dataframes[phase_csvs[0]].columns[1:].tolist()
+
     for (phase, csv) in phase_csvs.items():
         dataframes[phase] = pd.read_csv(csv)
 
-        dataframes[phase] = dataframes[phase][dataframes[phase]
-                                              [filters].sum(axis=1) > 0]
+        dataframes[phase] = dataframes[phase][dataframes[phase][filters].sum(axis=1) > 0]
 
         if limit is not None:
             dataframes[phase] = dataframes[phase].groupby(filters).head(limit)

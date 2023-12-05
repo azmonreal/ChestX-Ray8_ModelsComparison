@@ -91,9 +91,9 @@ def train_model(dataloaders, model, criterion, optimizer, scheduler, num_epochs=
         model.load_state_dict(torch.load(best_model_params_path))
     return model
 
+
 def save_model(model, destination, name):
     torch.save(model.state_dict(), f'{destination}/{name}.pth')
-
 
 
 def process_image(image_path):
@@ -120,18 +120,39 @@ def predict_image(image_path, model):
 
 
 def test_model(model, dataloader):
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in dataloader:
-            images, labels = data
-            images = images.to(device)
-            labels = labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
+    # Initialize counters for correct predictions and total predictions for each class
+    class_correct = list(0. for i in range(len(dataloader.dataset.classes)))
+    class_total = list(0. for i in range(len(dataloader.dataset.classes)))
 
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    print(
-        f'Accuracy of the network on the test images: {100 * correct / total}%')
+    # Move model to the computing device and set it to evaluation mode
+    model = model.to(device)
+    model.eval()
+
+    with torch.no_grad():
+        # Loop over all batches in the dataloader
+        for inputs, labels in dataloader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            outputs = model(inputs)
+
+            # Handle GoogLeNet specific output
+            if isinstance(outputs, tuple):
+                logits = outputs.logits
+            else:
+                logits = outputs
+
+            _, predicted = torch.max(logits, 1)
+            c = (predicted == labels).squeeze()
+
+            # Update class-specific accuracy counts
+            for i in range(len(labels)):
+                label = labels[i]
+                class_correct[label] += c[i].item()
+                class_total[label] += 1
+
+    # Print accuracy for each class after processing all images
+    for i in range(len(dataloader.dataset.classes)):
+        if class_total[i] > 0:
+            print(
+            f'Accuracy of {dataloader.dataset.classes[i]}: {100 * class_correct[i] / class_total[i]}%')
